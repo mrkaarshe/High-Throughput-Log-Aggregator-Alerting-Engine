@@ -6,6 +6,7 @@
   },
   "dependencies": {
     "hono": "^4.0.0",
+    "ioredis": "^5.11.1",
     "mongoose": "^8.0.0"
   },
   "overrides": {

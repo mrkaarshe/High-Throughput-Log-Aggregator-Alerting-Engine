@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import './config/db'
+import './config/redis'
 import logRouter from './routes/LogRoute'
 const app = new Hono()
 
@@ -12,5 +13,5 @@ app.route('/v1', logRouter);
 
 export default {
   fetch:app.fetch,
-  port:6000
+  port:4000
 }
