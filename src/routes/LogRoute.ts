@@ -50,10 +50,10 @@ router.post('/logs', async (c) => {
             const globalPipeline = redis.pipeline();
             const activeServicesInPipeline: string[] = [];
 
-            // 3. U dhis Redis Pipeline-ka si madax-bannaan adeeg kasta
+           
             for (const [serviceName, count] of Object.entries(errorCountsByService)) { 
                 const rule = rulesMap.get(serviceName);
-                const currentWindowSizeMs = rule ? rule.time_window_ms : 10000; // Fallback: 10s
+                const currentWindowSizeMs = rule ? rule.time_window_ms : 10000;
 
                 const redisKey = `alerts:${serviceName}:errors`;
                 let zaddArgs: (string | number)[] = [];
@@ -74,13 +74,13 @@ router.post('/logs', async (c) => {
             const results = await globalPipeline.exec();
             if (!results) return;
 
-            // 4. Akhri natiijooyinka Pipeline-ka kana falanqee Thresholds-ka
+
             for (let i = 0; i < activeServicesInPipeline.length; i++) {
                 const serviceName = activeServicesInPipeline[i];
                 const rule = rulesMap.get(serviceName);
                 
-                const currentThreshold = rule ? rule.threshold : 20; // Fallback: 20
-                const currentWindowSizeMs = rule ? rule.time_window_ms : 10000; // Fallback: 10s
+                const currentThreshold = rule ? rule.threshold : 20;
+                const currentWindowSizeMs = rule ? rule.time_window_ms : 10000; 
                 
                 const zcardIndex = (i * 4) + 2; 
                 const errorsCount = results[zcardIndex]?.[1] as number;
