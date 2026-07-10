@@ -1,3 +1,22 @@
-# deps
+
 node_modules/
 .env
+
+node_modules/
+bun.lockb
+
+.env
+.env.local
+.env.production
+
+
+.mongo_data/
+.redis_data/
+mongo_v2_data/
+redis_v2_data/
+
+
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
