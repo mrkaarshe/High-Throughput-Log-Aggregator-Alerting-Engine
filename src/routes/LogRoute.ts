@@ -1,14 +1,24 @@
 import { Hono } from "hono";
 import redis from "../config/redis";
+import { WORKER_CONFIG } from "../config/workerConfig";
 
 const logRouter = new Hono();
 
-logRouter.post('/logs', async (c)=> {
+const maxLogsPerRequset = WORKER_CONFIG.MAX_INGEST_BATCH;
+logRouter.post('/', async (c)=> {
    try {
      const logs =  await c.req.json();
     // first chake logs is array
     if(!Array.isArray(logs)){
         return c.json({ status: 'error', message: 'Expected an array of log entries' }, 400);
+    }
+    
+        if(logs.length > maxLogsPerRequset){
+        return c.json({
+            status:"error",
+            message:`Maximum ${maxLogsPerRequset} logs allowed per request`,
+            received: logs.length
+        },413);
     }
 
     // send response to the client 

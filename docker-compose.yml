@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+
   api:
     build:
       context: .
@@ -18,16 +19,33 @@ services:
       - redis-server
       - mongo
 
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: alert-engine-worker
+    command: bun run src/workers/logWorker.ts
+    env_file:
+      - .env
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/logdb
+      - REDIS_URL=redis://redis-server:6379
+      - WEBHOOK_URL=${WEBHOOK_URL}
+    depends_on:
+      - redis-server
+      - mongo
+
+
   redis-server:
     image: redis:7-alpine
     container_name: alert-engine-redis
     ports:
       - "6320:6379"
 
+
   mongo:
     image: mongo:7
     container_name: alert-engine-mongo
     ports:
       - "27018:27017"
-
-

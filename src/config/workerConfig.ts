@@ -3,5 +3,6 @@ export const WORKER_CONFIG = {
     BATCH_SIZE: 500,
     WEBHOOK_URL: Bun.env.WEBHOOK_URL || 'https://hooks.slack.com/services/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',
     DEFAULT_WINDOW_MS: 10000,
-    DEFAULT_THRESHOLD: 5
+    DEFAULT_THRESHOLD: 5,
+    MAX_INGEST_BATCH:5000
 };

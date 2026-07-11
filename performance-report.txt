@@ -14,7 +14,7 @@ This test measures raw application performance directly on the system
 hardware layer using the system's native loopback network interfaces.
 
 [Autocannon Command]:
-$ bunx autocannon -c 3000 -d 15 -m POST -H "Content-Type: application/json" -b '{"service_name":"payment-gateway","log_level":"ERROR","message":"Stress test footprint log"}' http://localhost:9000/v1/logs
+$ bunx autocannon -c 3000 -d 15 -m POST -H "Content-Type: application/json" -b '{"service_name":"payment-gateway","log_level":"ERROR","message":"Stress test footprint log"}' http://localhost:9000/v2/logs
 
 [Execution Metrics]:
 ┌────────────────────────┬──────────────────────────────────────────┐
@@ -43,7 +43,7 @@ overlays. It introduces slight processing footprints due to the Docker
 virtual network bridge layer and container CPU throttling.
 
 [Autocannon Command]:
-$ docker compose exec app bunx autocannon -c 3000 -d 15 -m POST -H "Content-Type: application/json" -b '{"service_name":"payment-gateway","log_level":"ERROR","message":"Stress test footprint log"}' http://localhost:9000/v1/logs
+$ docker compose exec app bunx autocannon -c 3000 -d 15 -m POST -H "Content-Type: application/json" -b '{"service_name":"payment-gateway","log_level":"ERROR","message":"Stress test footprint log"}' http://localhost:9000/v2/logs
 
 [Execution Metrics]:
 ┌────────────────────────┬──────────────────────────────────────────┐

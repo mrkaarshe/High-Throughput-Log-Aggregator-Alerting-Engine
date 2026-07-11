@@ -4,7 +4,7 @@ export const sendSlackNotification = (serviceName: string, errorsCount: number, 
     if (!WORKER_CONFIG.WEBHOOK_URL) return;
 
     const payload = {
-        text: ` *CRITICAL ALERT* \n\n*Service:* \`${serviceName}\` has breached error rules!\n*Active Errors:* \`${errorsCount}\` inside a rolling \`${windowMs / 1000}s\` window.\n*Threshold Limit:* \`${threshold}\``
+        text: `!*CRITICAL ALERT*! \n\n*Service:* \`${serviceName}\` has breached error rules!\n*Active Errors:* \`${errorsCount}\` inside a rolling \`${windowMs / 1000}s\` window.\n*Threshold Limit:* \`${threshold}\``
     };
 
     fetch(WORKER_CONFIG.WEBHOOK_URL, {

@@ -2,7 +2,7 @@
 
 A production-grade, highly optimized asynchronous log ingestion and real-time anomaly alerting engine built with **Bun**, **Hono**, **Redis**, and **MongoDB (Mongoose)**. 
 
-The **V2 Architecture** shifts from standard event streams into an advanced **Micro-Batch Injection & Aggregation** system. By decoupling ultra-fast network ingestion from analytical execution, the system processes thousands of logs natively with sub-millisecond API latencies without hitting disk thresholds under peak stress.
+The **V2 Architecture** shifts from standard event streams into an advanced **Micro-Batch Injection & Aggregation** system. By decoupling ultra-fast network ingestion from analytical execution, the system processes limit logs latencies without hitting disk thresholds under peak stress.
 
 ---
 
