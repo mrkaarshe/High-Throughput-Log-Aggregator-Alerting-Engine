@@ -10,37 +10,36 @@ export const backgroundWorker = async () => {
     console.log('Background process started and listening...');
      while (true) {
           try {
-       
+            // Queue Consumer
             // Fetch the first 500 logs from the tail of the queue
-            const result = await redis.lmpop(1,'log_queue',"RIGHT","COUNT",WORKER_CONFIG.BATCH_SIZE)
+            const result = await redis.blmpop
+            (0,1,"log_queue","RIGHT","COUNT",WORKER_CONFIG.BATCH_SIZE)
             if(result){
-                console.log(
-                `Removed ${result[1].length} logs from Redis queue`
+                console.log(`Removed ${result[1].length} logs from Redis queue`
                 );
             }else{
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 continue;
             }
             
-            const rawlogs =  result[1]
-
-            if (!rawlogs.length) {
-                // Wait 1 second if queue is empty
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                continue;
-            }
-
-            // Parse raw string logs into JSON objects
+            const rawlogs =  result[1];
+            
+           
             const validLogs = [];
 
+            // Error Aggregation
             // Map to hold error counts per service in the current batch
             const errorsCountsByServics: Record<string, number> = {}; 
+
+            // parsing and validation
             for(const raw of rawlogs){
                 try {
+                     // Parse raw string logs into JSON objects
                     const log = JSON.parse(raw)
                     validLogs.push(log)
-                    // MongoDB Bulk Insert Asynchronous background task    
+
                     if (log.log_level === "ERROR") {
+
                         errorsCountsByServics[log.service_name] = (errorsCountsByServics[log.service_name] || 0) + 1;
                     }
                 } catch (error) {
@@ -53,17 +52,21 @@ export const backgroundWorker = async () => {
             if (validLogs.length === 0) {
                 continue;
             }
-            
+            // Store every log permanently.
+            // MongoDB Bulk Insert Asynchronous background task    
             await LogModel.insertMany(validLogs, { ordered: false }).catch((err)=> console.log(err));
 
-            const now: number = Date.now();
+            const now : number = Date.now();
+            const uniqueId = crypto.randomUUID()
 
             const serviceOrder = Object.keys(errorsCountsByServics); 
             if (serviceOrder.length === 0) continue;
-            
+            // Load  all services rules 
             // Fetch dynamic threshold rules from MongoDB using a lean query for performance
             const activeRules = await RuleModel.find({ service_name: { $in: serviceOrder } }).lean();
-            const RulesMap = new Map(activeRules.map(i => [i.service_name, i]));
+            
+            const RulesMap = new Map(activeRules.map(i => [i.service_name, i])); // evc:{service_name,threshold,...}
+            
             
             // Global Pipeline to bundle all Redis commands into one single network round-trip
             const globalPipeline = redis.pipeline();
@@ -77,39 +80,46 @@ export const backgroundWorker = async () => {
 
             for (const [serviceName, count] of Object.entries(errorsCountsByServics)) {
                 const rule = RulesMap.get(serviceName);
+
                 const { currentWindowSizeMs } = getRuleConfig(rule);
 
                 const redisKey = `Alert:${serviceName}:errors`;
                 const zaddArgs: (string | number)[] = [];
+                
+                
 
                 for (let i = 0; i < count; i++) {
-                    zaddArgs.push(now, `${now}-${i}`);
+                    zaddArgs.push(now, `${now}-${uniqueId}-${i}`);
                 }
-
+                // sortedZ 
                 globalPipeline.zadd(redisKey, ...zaddArgs);
+                // Sliding Window remove evry log before now - windowMs 
                 globalPipeline.zremrangebyscore(redisKey, "-inf", now - currentWindowSizeMs);
                 globalPipeline.zcard(redisKey);
+                // added timeToLive 60s after this key is gone
                 globalPipeline.expire(redisKey, 60);
 
                 activeServicesInPipeline.push(serviceName);
+                
             }
 
             const results = await globalPipeline.exec();
+            
             if (!results) continue;
 
             const CooldownPipeline = redis.pipeline();
 
             const breachedServices: Array<{ serviceName: string; errorsCount: number; rule: any }> = [];
+           
+            
 
             for (let i = 0; i < activeServicesInPipeline.length; i++) {
 
-                const serviceName = activeServicesInPipeline[i]; 
+                const serviceName = activeServicesInPipeline[i];
                 
                 
                 const rule = RulesMap.get(serviceName);
                 const {currentThreshold,currentWindowSizeMs} = getRuleConfig(rule)
-                
-            
                 // Extracting ZCARD result index from the flat pipeline results array
                 const zcardIndex = (i * 4) + 2; 
                 const errorsCount = results[zcardIndex]?.[1] as number;
@@ -121,6 +131,7 @@ export const backgroundWorker = async () => {
                     // Stage a distributed lock using SET NX with an expiration time
                     CooldownPipeline.set(coolDownKey, "ACTIVE", "EX", WORKER_CONFIG.COOL_DOWN_DURATION, 'NX');
                     breachedServices.push({ serviceName, errorsCount, rule });
+                    
                 }
             }
 
@@ -131,19 +142,10 @@ export const backgroundWorker = async () => {
             for (let i = 0; i < breachedServices.length; i++) {
                 const { serviceName, errorsCount, rule } = breachedServices[i];
 
-                const {currentThreshold,currentWindowSizeMs} = getRuleConfig(rule)
-
-
- 
-                
-            
-                const lockAcquired  = coolDownResult[i]?.[1]==="OK"; 
-                
-                if (!lockAcquired) {
-                    console.log(`[Cooldown] Alert suppressed for ${serviceName}. Engine is cooling down.`);
-                    continue;
-                }
-                // Save the triggered alert audit entry into MongoDB asynchronously 
+                const {currentThreshold,currentWindowSizeMs} = getRuleConfig(rule)  
+                // it means this current service is cooldown
+                const lockAcquired  = coolDownResult[i]?.[1] === "OK";
+                                // Save the triggered alert audit entry into MongoDB asynchronously 
                 try {
                     await AlertModel.create({
                         service_name: serviceName,
@@ -155,6 +157,11 @@ export const backgroundWorker = async () => {
                     
                 } catch (err: any) {
                     console.error(err.message);
+                }
+
+                if (!lockAcquired) {
+                    console.log(`[Cooldown] Alert suppressed for ${serviceName}. Engine is cooling down.`);
+                    continue;
                 }
 
                 console.log(`Service: ${serviceName} has breached error threshold`);

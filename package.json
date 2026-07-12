@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "start": "bun run src/index.ts"
+    "start": "bun run src/index.ts",
+    "worker":"bun run --hot src/workers/logWorker.ts"
   },
   "dependencies": {
     "hono": "^4.0.0",

@@ -9,16 +9,23 @@ services:
     container_name: alert-engine-api
     ports:
       - "9000:9000"
+    restart: always
     env_file:
       - .env
     environment:
       - PORT=${PORT}
       - MONGO_URI=mongodb://mongo:27017/logdb
       - REDIS_URL=redis://redis-server:6379
+      - NODE_ENV=production
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    sysctls:
+      - net.core.somaxconn=10000
     depends_on:
       - redis-server
       - mongo
-
 
   worker:
     build:
@@ -26,26 +33,44 @@ services:
       dockerfile: Dockerfile
     container_name: alert-engine-worker
     command: bun run src/workers/logWorker.ts
+    restart: always
     env_file:
       - .env
     environment:
       - MONGO_URI=mongodb://mongo:27017/logdb
       - REDIS_URL=redis://redis-server:6379
       - WEBHOOK_URL=${WEBHOOK_URL}
+      - NODE_ENV=production
+
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     depends_on:
       - redis-server
       - mongo
 
-
   redis-server:
     image: redis:7-alpine
     container_name: alert-engine-redis
+    restart: always
     ports:
       - "6320:6379"
-
+    
+    sysctls:
+      - net.core.somaxconn=10000
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 
   mongo:
     image: mongo:7
     container_name: alert-engine-mongo
+    restart: always
     ports:
       - "27018:27017"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
